@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="profile-container">
+    <!-- Заголовок профиля -->
+    <div class="profile-header">
+        <h1>Мой профиль</h1>
+        <p></p>
+    </div>
+
+    <div class="profile-content">
+        <!-- Левая колонка - Информация пользователя -->
+        <div class="profile-sidebar">
+            <div class="user-card">
+                <div class="user-avatar">
+                    {{ username[0]|upper }}
+                </div>
+                <h2>{{ username }}</h2>
+                <p class="user-email">{{ email }}</p>
+                <p class="user-join-date">Участник с {{ join_date.strftime('%d.%m.%Y') }}</p>
+
+                <div class="logout-section">
+                    <a href="{{ url_for('logout') }}" class="btn btn-danger btn-full">
+                        Выйти из аккаунта
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка - Прогресс и статистика -->
+        <div class="profile-main">
+            <!-- Прогресс по темам -->
+            <div class="progress-section">
+                <h3>Прогресс по темам</h3>
+                {% if topic_progress %}
+                <div class="topic-progress">
+                    {% for topic in topic_progress %}
+                    <div class="topic-item">
+                        <div class="topic-name">{{ topic[0] }}</div>
+                        <div class="progress-bar">
+                            {% set percent = (topic[1] / topic[2] * 100) if topic[2] > 0 else 0 %}
+                            <div class="progress-fill" style="width: {{ percent }}%"></div>
+                        </div>
+                        <div class="progress-percent">{{ "%.0f"|format(percent) }}%</div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="no-progress">
+                    <p>Начните читать статьи чтобы увидеть ваш прогресс!</p>
+                    <a href="{{ url_for('articles') }}" class="btn">Начать обучение</a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Результаты тестов -->
+            <div class="test-results-section">
+                <h3>Последние результаты тестов</h3>
+                {% if test_results %}
+                <div class="test-results">
+                    {% for test in test_results %}
+                    <div class="test-result-item">
+                        <div class="test-info">
+                            <div class="test-title">{{ test[0] }}</div>
+                            <div class="test-date">{{ test[3].strftime('%d.%m.%Y') }}</div>
+                        </div>
+                        <div class="test-score">
+                            <div class="score-value">{{ test[1] }}/{{ test[2] }}</div>
+                            <div class="score-percent">{{ "%.0f"|format(test[1] / test[2] * 100) }}%</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="no-tests">
+                    <p>Пройдите тесты чтобы увидеть свои результаты!</p>
+                    <a href="{{ url_for('tests') }}" class="btn">Пройти тесты</a>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Достижения -->
+            <div class="achievements-section">
+                <h3>Мои достижения</h3>
+                {% if recent_achievements %}
+                <div class="achievements-grid">
+                    {% for achievement in recent_achievements %}
+                    <div class="achievement earned">
+                        <div class="achievement-icon">{{ achievement[2] if achievement[2] else '🏆' }}</div>
+                        <div class="achievement-info">
+                            <div class="achievement-title">{{ achievement[0] }}</div>
+                            <div class="achievement-desc">{{ achievement[1] }}</div>
+                            <div class="achievement-date">{{ achievement[3].strftime('%d.%m.%Y') }}</div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="no-achievements">
+                    <p>У вас пока нет достижений. Пройдите тесты и читайте статьи чтобы их получить!</p>
+                    <div class="achievement-actions">
+                        <a href="{{ url_for('articles') }}" class="btn">Читать статьи</a>
+                        <a href="{{ url_for('tests') }}" class="btn">Пройти тесты</a>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

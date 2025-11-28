@@ -1,0 +1,43 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Главная{% endblock %}
+{% block page_title %}Общая статистика{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-number">{{ total_users }}</div>
+        <div class="stat-label">Пользователей</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ total_articles }}</div>
+        <div class="stat-label">Статей</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-number">{{ total_tests }}</div>
+        <div class="stat-label">Тестов</div>
+    </div>
+</div>
+
+<div class="card">
+    <h2>Последние пользователи</h2>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Имя пользователя</th>
+                <th>Email</th>
+                <th>Дата регистрации</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in recent_users %}
+            <tr>
+                <td>{{ user[0] }}</td>
+                <td>{{ user[1] }}</td>
+                <td>{{ user[2].strftime('%d.%m.%Y %H:%M') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

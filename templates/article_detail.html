@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="article-detail-container">
+    <div class="breadcrumbs">
+        <a href="{{ url_for('index') }}">Главная</a> > 
+        <a href="{{ url_for('articles') }}">Статьи</a> > 
+        <span>{{ article[1] }}</span>
+    </div>
+
+    <!-- Заголовок статьи -->
+    <div class="article-header">
+        <h1>{{ article[1] }}</h1>
+        <div class="article-meta">
+            <span class="meta-item">{{ article[3] }}</span>
+            {% if is_read %}
+            <span class="meta-item" style="color: #27ae60; font-weight: bold;">Прочитано</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Содержание статьи -->
+    <div class="article-content">
+        {{ article[2] }}
+    </div>
+
+    <!-- Действия -->
+    <div class="article-actions">
+        <a href="{{ url_for('articles') }}" class="btn">← Назад к списку статей</a>
+        {% if not is_read %}
+        <button onclick="markAsRead({{ article[0] }})" class="btn btn-success">Отметить как прочитанную</button>
+        {% else %}
+        <span class="btn btn-success" style="background: #95a5a6; cursor: default;">Прочитано</span>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+function markAsRead(articleId) {
+    fetch('/mark_article_read/' + articleId)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Обновляем страницу чтобы показать изменения
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        });
+}
+</script>
+{% endblock %}

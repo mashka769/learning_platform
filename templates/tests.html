@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="tests-container">
+    <div class="tests-header">
+        <h1>Тесты по программированию</h1>
+        <p>Тестируйте понимание Python после каждой темы</p>
+    </div>
+
+    <div class="tests-list">
+        {% for test in tests %}
+        <div class="test-card">
+            <div class="test-card-header">
+                <h3>{{ test[1] }}</h3>
+                <div class="test-meta">
+                    <span class="badge category">{{ test[3] }}</span>
+                    <span class="badge difficulty">{{ test[4] }}</span>
+                    {% if test[0] in completed_tests %}
+                    <span class="badge completed-status">Пройден</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="test-description">
+                {{ test[2] }}
+            </div>
+
+            <div class="test-card-actions">
+                <a href="{{ url_for('test_detail', test_id=test[0]) }}" class="btn btn-primary">
+                    Решить тест
+                </a>
+                {% if test[0] in completed_tests %}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

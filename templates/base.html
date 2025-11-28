@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>CodeFirst</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <!-- Заменяем ссылку на обычный div -->
+        <div class="nav-brand">
+            <div class="logo-container">
+                <img src="{{ url_for('static', filename='images/log.png') }}" class="logo">
+            </div>
+        </div>
+
+        <div class="nav-links">
+            <a href="{{ url_for('index') }}">Главная</a>
+            <a href="{{ url_for('articles') }}">Статьи</a>
+            <a href="{{ url_for('tests') }}">Тесты</a>
+            <a href="{{ url_for('profile') }}">Профиль</a>
+
+            <!-- Показывать админку только админам -->
+            {% if session.get('is_admin') %}
+            <a href="{{ url_for('admin.dashboard') }}" class="admin-btn">⚙ Админка</a>
+            {% endif %}
+        </div>
+
+        <div class="user-info">
+            <span>Привет, {{ username }}!</span>
+            <a href="{{ url_for('logout') }}" class="logout-btn">Выйти</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

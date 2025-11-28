@@ -1,0 +1,40 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}Управление пользователями{% endblock %}
+{% block page_title %}Управление пользователями{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2>Все пользователи</h2>
+    
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Имя пользователя</th>
+                <th>Email</th>
+                <th>Дата регистрации</th>
+                <th>Статистика</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for user in users %}
+            <tr>
+                <td>{{ user[0] }}</td>
+                <td><strong>{{ user[1] }}</strong></td>
+                <td>{{ user[2] }}</td>
+                <td>{{ user[3].strftime('%d.%m.%Y %H:%M') }}</td>
+                <td>
+                    <div style="display: flex; gap: 1rem; font-size: 0.9rem;">
+                        <span title="Прочитано статей">📚 {{ user[4] }}</span>
+                        <span title="Пройдено тестов">🎯 {{ user[5] }}</span>
+                        <span title="Получено достижений">🏆 {{ user[6] }}</span>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

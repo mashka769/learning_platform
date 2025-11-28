@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="hero">
+    <h1>CodeFirst</h1>
+    <p class="hero-subtitle">Начни программировать на Python с нуля</p>
+</div>
+
+<div class="cards">
+    <div class="card">
+        <div class="card-icon"></div>
+        <h2>Обучающие статьи</h2>
+        <p>Освойте Python на реальных примерах и подробных объяснениях</p>
+        <a href="{{ url_for('articles') }}" class="btn">Читать статьи</a>
+    </div>
+
+    <div class="card">
+        <div class="card-icon"></div>
+        <h2>Тесты по темам</h2>
+        <p>Проверяйте свои знания и закрепляйте материал через систему тестирования</p>
+        <a href="{{ url_for('tests') }}" class="btn">Решать тесты</a>
+    </div>
+</div>
+
+<!-- Блок статистики -->
+<div class="stats-preview">
+    <h3>Ваши текущие результаты</h3>
+    <div class="stats-grid">
+        <div class="stat-item">
+            <div class="stat-number">{{ articles_read }}</div>
+            <div class="stat-label">Пройдено статей</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ tests_completed }}</div>
+            <div class="stat-label">Пройдено тестов</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number">{{ achievements_count if achievements_count else 0 }}</div>
+            <div class="stat-label">Получено достижений</div>
+        </div>
+    </div>
+</div>
+{% endblock %}

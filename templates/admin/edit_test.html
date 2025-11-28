@@ -1,0 +1,307 @@
+{% extends "admin/admin_base.html" %}
+
+{% block title %}{% if test %}Редактирование теста{% else %}Новый тест{% endif %}{% endblock %}
+{% block page_title %}{% if test %}Редактирование теста{% else %}Создание теста{% endif %}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <form method="POST" action="{% if test %}{{ url_for('admin.update_test', test_id=test[0]) }}{% else %}{{ url_for('admin.create_test') }}{% endif %}">
+        <h3>Основная информация о тесте</h3>
+
+        <div class="form-group">
+            <label for="title">Название теста:</label>
+            <input type="text" id="title" name="title" class="form-control"
+                   value="{{ test[1] if test else '' }}" required>
+        </div>
+
+        <div class="form-group">
+            <label for="description">Описание теста:</label>
+            <textarea id="description" name="description" class="form-control" rows="3">{{ test[2] if test else '' }}</textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+            <div class="form-group">
+                <label for="category_id">Категория:</label>
+                <select id="category_id" name="category_id" class="form-control" required>
+                    <option value="">Выберите категорию</option>
+                    {% for category in categories %}
+                    <option value="{{ category[0] }}" {% if test and test[3] == category[0] %}selected{% endif %}>
+                        {{ category[1] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="difficulty_id">Уровень сложности:</label>
+                <select id="difficulty_id" name="difficulty_id" class="form-control" required>
+                    <option value="">Выберите сложность</option>
+                    {% for difficulty in difficulties %}
+                    <option value="{{ difficulty[0] }}" {% if test and test[4] == difficulty[0] %}selected{% endif %}>
+                        {{ difficulty[1] }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="max_score">Максимальный балл:</label>
+            <input type="number" id="max_score" name="max_score" class="form-control"
+                   value="{{ test[6] if test else 100 }}" min="1" max="1000" required>
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 0.5rem;">
+                <input type="checkbox" name="is_active" {% if not test or test[7] %}checked{% endif %}>
+                Активный тест
+            </label>
+        </div>
+
+        <hr style="margin: 2rem 0;">
+
+        <h3>Вопросы теста</h3>
+
+        <div id="questions-container">
+            {% if test and questions %}
+                {% for question in questions %}
+                <div class="question-block" data-question-id="{{ question[0] }}">
+                    <div class="question-header">
+                        <h4>Вопрос {{ loop.index }}</h4>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="removeQuestion(this)">Удалить вопрос</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Текст вопроса:</label>
+                        <textarea name="question_text[]" class="form-control" rows="3" required>{{ question[1] }}</textarea>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Тип вопроса:</label>
+                            <select name="question_type[]" class="form-control" required>
+                                <option value="1" {% if question[2] == 1 %}selected{% endif %}>Один вариант ответа</option>
+                                <option value="2" {% if question[2] == 2 %}selected{% endif %}>Несколько вариантов</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Баллы за вопрос:</label>
+                            <input type="number" name="question_points[]" class="form-control"
+                                   value="{{ question[3] }}" min="1" max="100" required>
+                        </div>
+                    </div>
+
+                    <div class="options-container">
+                        <h5>Варианты ответов:</h5>
+                        {% for option in question_options[question[0]] %}
+                        <div class="option-row">
+                            <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 0.5rem;">
+                                <input type="text" name="option_text_{{ question[0] }}[]" class="form-control"
+                                       value="{{ option[1] }}" placeholder="Текст варианта ответа" required>
+                                <label style="display: flex; align-items: center; gap: 0.3rem;">
+                                    <input type="checkbox" name="option_correct_{{ question[0] }}[]" value="{{ loop.index0 }}" {% if option[2] %}checked{% endif %}>
+                                    Правильный
+                                </label>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="removeOption(this)">×</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addOption(this)">+ Добавить вариант</button>
+                    <hr>
+                </div>
+                {% endfor %}
+            {% else %}
+                <!-- Пустой вопрос для нового теста -->
+                <div class="question-block">
+                    <div class="question-header">
+                        <h4>Вопрос 1</h4>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="removeQuestion(this)">Удалить вопрос</button>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Текст вопроса:</label>
+                        <textarea name="question_text[]" class="form-control" rows="3" required></textarea>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div class="form-group">
+                            <label>Тип вопроса:</label>
+                            <select name="question_type[]" class="form-control" required>
+                                <option value="1">Один вариант ответа</option>
+                                <option value="2">Несколько вариантов</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Баллы за вопрос:</label>
+                            <input type="number" name="question_points[]" class="form-control" value="10" min="1" max="100" required>
+                        </div>
+                    </div>
+
+                    <div class="options-container">
+                        <h5>Варианты ответов:</h5>
+                        <div class="option-row">
+                            <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 0.5rem;">
+                                <input type="text" name="option_text_new[]" class="form-control" placeholder="Текст варианта ответа" required>
+                                <label style="display: flex; align-items: center; gap: 0.3rem;">
+                                    <input type="checkbox" name="option_correct_new[]" value="0">
+                                    Правильный
+                                </label>
+                                <button type="button" class="btn btn-danger btn-sm" onclick="removeOption(this)">×</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="addOption(this)">+ Добавить вариант</button>
+                    <hr>
+                </div>
+            {% endif %}
+        </div>
+
+        <button type="button" class="btn btn-primary" onclick="addQuestion()">+ Добавить вопрос</button>
+
+        <div class="form-actions">
+            <button type="submit" class="btn btn-success">
+                {% if test %}Обновить тест{% else %}Создать тест{% endif %}
+            </button>
+            <a href="{{ url_for('admin.admin_tests') }}" class="btn btn-secondary">← Назад к списку</a>
+        </div>
+    </form>
+</div>
+
+<script>
+let questionCounter = {{ questions|length if questions else 1 }};
+
+function addQuestion() {
+    questionCounter++;
+    const questionsContainer = document.getElementById('questions-container');
+
+    const newQuestion = `
+        <div class="question-block">
+            <div class="question-header">
+                <h4>Вопрос ${questionCounter}</h4>
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeQuestion(this)">Удалить вопрос</button>
+            </div>
+
+            <div class="form-group">
+                <label>Текст вопроса:</label>
+                <textarea name="question_text[]" class="form-control" rows="3" required></textarea>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label>Тип вопроса:</label>
+                    <select name="question_type[]" class="form-control" required>
+                        <option value="1">Один вариант ответа</option>
+                        <option value="2">Несколько вариантов</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Баллы за вопрос:</label>
+                    <input type="number" name="question_points[]" class="form-control" value="10" min="1" max="100" required>
+                </div>
+            </div>
+
+            <div class="options-container">
+                <h5>Варианты ответов:</h5>
+                <div class="option-row">
+                    <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 0.5rem;">
+                        <input type="text" name="option_text_new[]" class="form-control" placeholder="Текст варианта ответа" required>
+                        <label style="display: flex; align-items: center; gap: 0.3rem;">
+                            <input type="checkbox" name="option_correct_new[]" value="0">
+                            Правильный
+                        </label>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="removeOption(this)">×</button>
+                    </div>
+                </div>
+            </div>
+
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addOption(this)">+ Добавить вариант</button>
+            <hr>
+        </div>
+    `;
+
+    questionsContainer.insertAdjacentHTML('beforeend', newQuestion);
+}
+
+function removeQuestion(button) {
+    if (document.querySelectorAll('.question-block').length > 1) {
+        button.closest('.question-block').remove();
+        // Пересчитываем номера вопросов
+        document.querySelectorAll('.question-block').forEach((block, index) => {
+            block.querySelector('h4').textContent = `Вопрос ${index + 1}`;
+        });
+        questionCounter = document.querySelectorAll('.question-block').length;
+    } else {
+        alert('Тест должен содержать хотя бы один вопрос');
+    }
+}
+
+function addOption(button) {
+    const optionsContainer = button.previousElementSibling;
+    const optionIndex = optionsContainer.querySelectorAll('.option-row').length;
+
+    const newOption = `
+        <div class="option-row">
+            <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 0.5rem;">
+                <input type="text" name="option_text_new[]" class="form-control" placeholder="Текст варианта ответа" required>
+                <label style="display: flex; align-items: center; gap: 0.3rem;">
+                    <input type="checkbox" name="option_correct_new[]" value="${optionIndex}">
+                    Правильный
+                </label>
+                <button type="button" class="btn btn-danger btn-sm" onclick="removeOption(this)">×</button>
+            </div>
+        </div>
+    `;
+
+    optionsContainer.insertAdjacentHTML('beforeend', newOption);
+}
+
+function removeOption(button) {
+    if (button.closest('.options-container').querySelectorAll('.option-row').length > 1) {
+        button.closest('.option-row').remove();
+    } else {
+        alert('Вопрос должен содержать хотя бы один вариант ответа');
+    }
+}
+</script>
+
+<style>
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #ecf0f1;
+}
+
+.question-block {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    border-left: 4px solid #3498db;
+}
+
+.question-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.options-container {
+    margin: 1rem 0;
+}
+
+.option-row {
+    margin-bottom: 0.5rem;
+}
+
+.btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
+}
+</style>
+{% endblock %}

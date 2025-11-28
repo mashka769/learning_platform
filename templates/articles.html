@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="articles-container">
+    <div class="articles-header">
+        <h1>Статьи по программированию</h1>
+        <p>Изучайте Python через подробные уроки с практическими примерами</p>
+    </div>
+
+    <div class="articles-list">
+        {% for article in articles %}
+        <div class="article-card">
+            <div class="article-card-header">
+                <h3>{{ article[1] }}</h3>
+                <div class="article-meta">
+                    <span class="badge category">{{ article[3] }}</span>
+                    <span class="badge difficulty">{{ article[4] }}</span>
+                    {% if article[0] in read_articles %}
+                    <span class="badge read-status">Прочитано</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="article-preview">
+                {{ article[2][:200] }}{% if article[2]|length > 200 %}...{% endif %}
+            </div>
+
+            <div class="article-card-actions">
+                <a href="{{ url_for('article_detail', article_id=article[0]) }}" class="btn btn-primary">
+                    Читать полностью
+                </a>
+                {% if article[0] in read_articles %}
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
