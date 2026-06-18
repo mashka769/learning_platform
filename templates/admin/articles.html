@@ -5,55 +5,57 @@
 
 {% block content %}
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
         <h2>Все статьи</h2>
         <a href="{{ url_for('admin.new_article') }}" class="btn btn-primary">Добавить статью</a>
     </div>
 
-    <table class="table">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Заголовок</th>
-                <th>Категория</th>
-                <th>Сложность</th>
-                <th>Статус</th>
-                <th>Дата создания</th>
-                <th>Действия</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for article in articles %}
-            <tr>
-                <td>{{ article[0] }}</td>
-                <td><strong>{{ article[1] }}</strong></td>
-                <td>{{ article[2] }}</td>
-                <td>{{ article[3] }}</td>
-                <td>
-                    {% if article[4] %}
-                        <span style="color: #27ae60;">Опубликована</span>
-                    {% else %}
-                        <span style="color: #e74c3c;">Черновик</span>
-                    {% endif %}
-                </td>
-                <td>{{ article[5].strftime('%d.%m.%Y') }}</td>
-                <td>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <a href="{{ url_for('admin.edit_article', article_id=article[0]) }}" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
-                            Редактировать
-                        </a>
-                        <a href="{{ url_for('article_detail', article_id=article[0]) }}" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
-                            Просмотреть
-                        </a>
-                        <a href="{{ url_for('admin.delete_article', article_id=article[0]) }}" class="btn btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" 
-                           onclick="return confirm('Вы уверены что хотите удалить эту статью?')">
-                            Удалить
-                        </a>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Заголовок</th>
+                    <th>Категория</th>
+                    <th>Сложность</th>
+                    <th>Статус</th>
+                    <th>Дата создания</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for article in articles %}
+                <tr>
+                    <td>{{ article[0] }}</td>
+                    <td><strong>{{ article[1] }}</strong></td>
+                    <td>{{ article[2] }}</td>
+                    <td>{{ article[3] }}</td>
+                    <td>
+                        {% if article[4] %}
+                            <span class="status-badge status-published">Опубликована</span>
+                        {% else %}
+                            <span class="status-badge status-draft">Черновик</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ article[5].strftime('%d.%m.%Y') }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{{ url_for('admin.edit_article', article_id=article[0]) }}" class="btn btn-secondary">
+                                Редактировать
+                            </a>
+                            <a href="{{ url_for('article_detail', article_id=article[0]) }}" class="btn btn-primary">
+                                Просмотреть
+                            </a>
+                            <a href="{{ url_for('admin.delete_article', article_id=article[0]) }}" class="btn btn-danger"
+                               onclick="return confirm('Вы уверены что хотите удалить эту статью?')">
+                                Удалить
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

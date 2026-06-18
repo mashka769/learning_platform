@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="coding-test-container">
+    <div class="test-header">
+        <h1>{{ test[1] }}</h1>
+        <p class="test-description">{{ test[2] }}</p>
+
+    <div class="challenge-card">
+        <h2 class="challenge-title">Задание {{ current_challenge[1] }}</h2>
+        <div class="challenge-description">
+            {{ current_challenge[2] }}
+        </div>
+
+        <div class="code-editor">
+            <textarea id="code" class="code-input" placeholder="Введите ваш код здесь...">{{ progress.answers.get(current_challenge[0]|string, '') }}</textarea>
+        </div>
+
+        <div class="challenge-actions">
+            {% if progress.current_step > 1 %}
+            <a href="{{ url_for('coding_step', test_id=test[0], step=progress.current_step-1) }}" class="btn btn-secondary">
+                Назад
+            </a>
+            {% endif %}
+
+            <button onclick="checkCode({{ current_challenge[0] }})" class="btn btn-primary" id="checkBtn">
+                Проверить
+            </button>
+
+            {% if progress.completed[current_challenge[1]-1] and progress.current_step < challenges|length %}
+            <a href="{{ url_for('coding_step', test_id=test[0], step=progress.current_step+1) }}" class="btn btn-success">
+                Далее
+            </a>
+            {% endif %}
+        </div>
+
+        <div id="result" class="result-area" style="display: none;">
+            <!-- Результат проверки появится здесь -->
+        </div>
+    </div>
+
+    {% if progress.completed[0] and progress.completed[1] and progress.completed[2] and progress.completed[3] and progress.completed[4] %}
+    <div class="completion-message">
+        <h2>Вы завершили тест!</h2>
+        <p>Ваш результат: {{ progress.score }} / {{ test[3] }} баллов</p>
+        <div class="completion-actions">
+            <a href="{{ url_for('tests') }}" class="btn btn-outline">К списку тестов</a>
+            <a href="{{ url_for('profile') }}" class="btn btn-outline">Посмотреть прогресс</a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<style>
+.coding-test-container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.progress-container {
+    background: #E8F5E9;
+    padding: 2rem;
+    border-radius: 12px;
+    margin: 2rem 0;
+}
+
+.steps {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.step {
+    text-align: center;
+    position: relative;
+    flex: 1;
+}
+
+.step-number {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #4ecdc4;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    font-weight: bold;
+    color: #2d3a34;
+}
+
+.step.active .step-number {
+    background: #4ecdc4;
+    color: white;
+    border-color: #2ecc71;
+}
+
+.step.completed .step-number {
+    background: #2ecc71;
+    color: white;
+    border-color: #2ecc71;
+}
+
+.challenge-card {
+    background: #E8F5E9;
+    padding: 2rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(13, 43, 26, 0.15);
+    margin: 2rem 0;
+}
+
+.challenge-title {
+    color: #0d2b1a;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+}
+
+.challenge-description {
+    color: #2d3a34;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+}
+
+.code-input {
+    width: 100%;
+    min-height: 200px;
+    font-family: 'Courier New', monospace;
+    padding: 1rem;
+    border: 2px solid #dcedc8;
+    border-radius: 8px;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 1rem 0;
+}
+
+.code-input:focus {
+    outline: none;
+    border-color: #4ecdc4;
+}
+
+.challenge-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin: 2rem 0;
+}
+
+.result-area {
+    padding: 1rem;
+    border-radius: 8px;
+    margin-top: 1rem;
+    font-weight: 500;
+}
+
+.result-success {
+    background: rgba(46, 204, 113, 0.1);
+    color: #27ae60;
+    border: 2px solid #2ecc71;
+}
+
+.result-error {
+    background: rgba(255, 154, 118, 0.1);
+    color: #e67e22;
+    border: 2px solid #ff9a76;
+}
+
+.completion-message {
+    text-align: center;
+    padding: 3rem;
+    background: linear-gradient(135deg, #4ecdc4, #2ecc71);
+    color: white;
+    border-radius: 12px;
+    margin-top: 2rem;
+}
+
+.completion-message h2 {
+    color: white;
+    margin-bottom: 1rem;
+}
+
+.completion-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+.btn-outline {
+    display: inline-block;
+    padding: 0.8rem 1.5rem;
+    background: transparent;
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    border: 2px solid #0d2b1a;
+    box-shadow: 0 4px 15px rgba(13, 43, 26, 0.3);
+}
+
+.btn-outline:hover {
+    background: #0d2b1a;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(13, 43, 26, 0.4);
+}
+
+.btn-secondary {
+    background: #4ecdc4;
+    color: white;
+    border: 2px solid #0d2b1a;
+}
+
+.btn-primary {
+    background: #2ecc71;
+    color: white;
+    border: 2px solid #0d2b1a;
+}
+
+.btn-success {
+    background: #27ae60;
+    color: white;
+    border: 2px solid #0d2b1a;
+}
+
+.btn-secondary:hover,
+.btn-primary:hover,
+.btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(13, 43, 26, 0.4);
+}
+</style>
+
+<script>
+async function checkCode(challengeId) {
+    const code = document.getElementById('code').value;
+    const resultDiv = document.getElementById('result');
+    const checkBtn = document.getElementById('checkBtn');
+
+    if (!code.trim()) {
+        resultDiv.innerHTML = '<div class="result-error">Введите код!</div>';
+        resultDiv.style.display = 'block';
+        return;
+    }
+
+    checkBtn.disabled = true;
+    checkBtn.textContent = 'Проверка...';
+
+    try {
+        const response = await fetch(`/check_code/${challengeId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ code: code })
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            if (result.is_correct) {
+                resultDiv.innerHTML = '<div class="result-success">Правильно! Задание выполнено.</div>';
+                // Перезагружаем страницу, чтобы обновить состояние и показать кнопку "Далее"
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                resultDiv.innerHTML = '<div class="result-error">Неправильно. Попробуйте еще раз.</div>';
+            }
+        } else {
+            resultDiv.innerHTML = `<div class="result-error">Ошибка: ${result.error}</div>`;
+        }
+    } catch (error) {
+        resultDiv.innerHTML = '<div class="result-error">Ошибка сети</div>';
+    }
+
+    
+    resultDiv.style.display = 'block';
+    checkBtn.disabled = false;
+    checkBtn.textContent = 'Проверить';
+}
+</script>
+{% endblock %}

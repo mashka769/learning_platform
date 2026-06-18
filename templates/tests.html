@@ -26,10 +26,16 @@
             </div>
 
             <div class="test-card-actions">
-                <a href="{{ url_for('test_detail', test_id=test[0]) }}" class="btn btn-primary">
-                    Решить тест
-                </a>
-                {% if test[0] in completed_tests %}
+                {% if test[4] == 'Сложный' or test[1] == 'Сложный уровень' %}
+                    <!-- Для сложного теста используем специальную страницу -->
+                    <a href="{{ url_for('coding_test', test_id=test[0]) }}" class="btn btn-primary">
+                        Решить тест
+                    </a>
+                {% else %}
+                    <!-- Для обычных тестов -->
+                    <a href="{{ url_for('test_detail', test_id=test[0]) }}" class="btn btn-primary">
+                        Решить тест
+                    </a>
                 {% endif %}
             </div>
         </div>

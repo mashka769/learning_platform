@@ -26,7 +26,7 @@
 
     <!-- Действия -->
     <div class="article-actions">
-        <a href="{{ url_for('articles') }}" class="btn">← Назад к списку статей</a>
+        <a href="{{ url_for('articles') }}" class="btn">Назад к списку статей</a>
         {% if not is_read %}
         <button onclick="markAsRead({{ article[0] }})" class="btn btn-success">Отметить как прочитанную</button>
         {% else %}

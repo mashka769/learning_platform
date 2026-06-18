@@ -10,7 +10,7 @@
         <!-- Заменяем ссылку на обычный div -->
         <div class="nav-brand">
             <div class="logo-container">
-                <img src="{{ url_for('static', filename='images/log.png') }}" class="logo">
+                <img src="{{ url_for('static', filename='images/log11.png') }}" class="logo">
             </div>
         </div>
 
@@ -22,7 +22,7 @@
 
             <!-- Показывать админку только админам -->
             {% if session.get('is_admin') %}
-            <a href="{{ url_for('admin.dashboard') }}" class="admin-btn">⚙ Админка</a>
+            <a href="{{ url_for('admin.dashboard') }}" class="admin-btn">Админ</a>
             {% endif %}
         </div>
 

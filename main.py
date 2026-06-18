@@ -2,6 +2,8 @@ from flask import Flask, render_template, session, redirect, url_for, request
 from auth.routes import auth_bp
 from admin.routes import admin_bp
 import pyodbc
+import os
+from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
@@ -10,6 +12,12 @@ app.secret_key = 'your_secret_key_here'
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
 
+# Настройки для аватарок
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+MAX_FILE_SIZE = 2 * 1024 * 1024  # 2MB
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Функция подключения к БД
 def get_db_connection():
@@ -25,19 +33,24 @@ def get_db_connection():
         print(f"❌ Ошибка подключения: {e}")
         return None
 
-
 # Проверка авторизации
 def is_authenticated():
     return 'user_id' in session
 
+def normalize_code(code):
+    """Удаляет пробелы, табуляции и переносы строк для сравнения"""
+    import re
+    return re.sub(r'\s+', '', code.strip())
+
+def check_code(user_code, expected_code):
+    """Сравнивает код пользователя с эталоном"""
+    return normalize_code(user_code) == normalize_code(expected_code)
 
 def check_and_award_achievements(user_id):
-
     conn = get_db_connection()
     cursor = conn.cursor()
 
     try:
-
         cursor.execute("""
             SELECT COUNT(DISTINCT article_id) FROM learning_progress 
             WHERE user_id = ? AND progress_type_id = 1
@@ -96,7 +109,6 @@ def check_and_award_achievements(user_id):
     finally:
         conn.close()
 
-
 def check_score_threshold(user_id, threshold):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -116,7 +128,117 @@ def check_score_threshold(user_id, threshold):
     finally:
         conn.close()
 
+def save_coding_test_result(test_id, score):
+    """Сохраняет результат сложного теста"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
+    try:
+        cursor.execute("SELECT max_score FROM tests WHERE test_id = ?", test_id)
+        max_score = cursor.fetchone()[0]
+
+        cursor.execute("""
+            INSERT INTO test_results (user_id, test_id, score, max_score, completed_at)
+            VALUES (?, ?, ?, ?, GETDATE())
+        """, session['user_id'], test_id, score, max_score)
+
+        cursor.execute("""
+            INSERT INTO learning_progress (user_id, test_id, progress_type_id, score, completed_at)
+            VALUES (?, ?, 2, ?, GETDATE())
+        """, session['user_id'], test_id, score)
+
+        conn.commit()
+        check_and_award_achievements(session['user_id'])
+
+    except Exception as e:
+        print(f"Ошибка при сохранении результата: {e}")
+    finally:
+        conn.close()
+
+# ========== РОУТЫ ДЛЯ АВАТАРОК ==========
+@app.route('/upload_avatar', methods=['POST'])
+def upload_avatar():
+    if not is_authenticated():
+        return {'success': False, 'error': 'Not authenticated'}
+
+    if 'avatar' not in request.files:
+        return {'success': False, 'error': 'Нет файла'}
+
+    file = request.files['avatar']
+
+    if file.filename == '':
+        return {'success': False, 'error': 'Файл не выбран'}
+
+    if not allowed_file(file.filename):
+        return {'success': False, 'error': 'Разрешены только PNG, JPG, JPEG, GIF'}
+
+    file.seek(0, os.SEEK_END)
+    file_size = file.tell()
+    file.seek(0)
+
+    if file_size > MAX_FILE_SIZE:
+        return {'success': False, 'error': 'Файл слишком большой (макс. 2MB)'}
+
+    try:
+        avatar_data = file.read()
+        avatar_type = file.content_type
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT avatar_id FROM user_avatars WHERE user_id = ?", session['user_id'])
+        existing = cursor.fetchone()
+
+        if existing:
+            cursor.execute("""
+                UPDATE user_avatars 
+                SET avatar_data = ?, avatar_type = ?, updated_at = GETDATE()
+                WHERE user_id = ?
+            """, avatar_data, avatar_type, session['user_id'])
+        else:
+            cursor.execute("""
+                INSERT INTO user_avatars (user_id, avatar_data, avatar_type)
+                VALUES (?, ?, ?)
+            """, session['user_id'], avatar_data, avatar_type)
+
+        conn.commit()
+        conn.close()
+
+        return {'success': True, 'message': 'Аватар обновлен'}
+
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+@app.route('/get_avatar/<int:user_id>')
+def get_avatar(user_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT avatar_data, avatar_type FROM user_avatars WHERE user_id = ?", user_id)
+    avatar = cursor.fetchone()
+    conn.close()
+
+    if avatar and avatar[0]:
+        response = app.response_class(avatar[0], mimetype=avatar[1])
+        return response
+    else:
+        return '', 404
+
+@app.route('/delete_avatar', methods=['POST'])
+def delete_avatar():
+    if not is_authenticated():
+        return {'success': False, 'error': 'Not authenticated'}
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM user_avatars WHERE user_id = ?", session['user_id'])
+    conn.commit()
+    conn.close()
+
+    return {'success': True, 'message': 'Аватар удален'}
+
+# ========== ОСНОВНЫЕ РОУТЫ ==========
 @app.route('/')
 def index():
     if not is_authenticated():
@@ -125,21 +247,18 @@ def index():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Считаем УНИКАЛЬНЫЕ пройденные статьи (а не попытки)
     cursor.execute("""
         SELECT COUNT(DISTINCT article_id) FROM learning_progress 
         WHERE user_id = ? AND progress_type_id = 1
     """, session['user_id'])
     articles_read = cursor.fetchone()[0]
 
-    # Считаем УНИКАЛЬНЫЕ пройденные тесты (а не попытки)
     cursor.execute("""
         SELECT COUNT(DISTINCT test_id) FROM learning_progress 
         WHERE user_id = ? AND progress_type_id = 2
     """, session['user_id'])
     tests_completed = cursor.fetchone()[0]
 
-    # Считаем достижения
     cursor.execute("""
         SELECT COUNT(*) FROM user_achievements 
         WHERE user_id = ?
@@ -154,7 +273,6 @@ def index():
                            tests_completed=tests_completed,
                            achievements_count=achievements_count)
 
-
 @app.route('/articles')
 def articles():
     if not is_authenticated():
@@ -163,7 +281,6 @@ def articles():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Получаем все опубликованные статьи
     cursor.execute("""
         SELECT a.article_id, a.title, a.content, c.name as category, 
                d.level_name as difficulty, a.reading_time_minutes
@@ -176,7 +293,6 @@ def articles():
 
     articles_list = cursor.fetchall()
 
-    # Получаем ID прочитанных статей для текущего пользователя
     cursor.execute("""
         SELECT DISTINCT article_id FROM learning_progress 
         WHERE user_id = ? AND progress_type_id = 1
@@ -191,7 +307,6 @@ def articles():
                            read_articles=read_articles,
                            username=session['username'])
 
-
 @app.route('/article/<int:article_id>')
 def article_detail(article_id):
     if not is_authenticated():
@@ -200,7 +315,6 @@ def article_detail(article_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Получаем полную информацию о статье
     cursor.execute("""
         SELECT a.article_id, a.title, a.content, c.name as category, 
                d.level_name as difficulty, a.reading_time_minutes,
@@ -214,7 +328,6 @@ def article_detail(article_id):
 
     article = cursor.fetchone()
 
-    # Проверяем, прочитана ли статья - ИСПРАВЛЕННЫЙ ЗАПРОС
     cursor.execute("""
         SELECT TOP 1 1 FROM learning_progress 
         WHERE user_id = ? AND article_id = ? AND progress_type_id = 1
@@ -232,7 +345,6 @@ def article_detail(article_id):
                            is_read=is_read,
                            username=session['username'])
 
-
 @app.route('/tests')
 def tests():
     if not is_authenticated():
@@ -241,7 +353,6 @@ def tests():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Получаем все тесты
     cursor.execute("""
         SELECT t.test_id, t.title, t.description, c.name as category, 
                d.level_name as difficulty, t.time_limit_minutes
@@ -254,7 +365,6 @@ def tests():
 
     tests_list = cursor.fetchall()
 
-    # Получаем ID тестов, которые пользователь проходил хотя бы один раз
     cursor.execute("""
         SELECT DISTINCT test_id FROM learning_progress 
         WHERE user_id = ? AND progress_type_id = 2
@@ -269,7 +379,6 @@ def tests():
                            completed_tests=completed_tests,
                            username=session['username'])
 
-
 @app.route('/test/<int:test_id>')
 def test_detail(test_id):
     if not is_authenticated():
@@ -278,7 +387,6 @@ def test_detail(test_id):
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Получаем информацию о тесте
     cursor.execute("""
         SELECT t.test_id, t.title, t.description, c.name as category, 
                d.level_name as difficulty, t.time_limit_minutes, t.max_score
@@ -293,7 +401,6 @@ def test_detail(test_id):
     if not test:
         return "Тест не найден", 404
 
-    # Проверяем, пройден ли тест (хотя бы один раз) - ИСПРАВЛЕННЫЙ ЗАПРОС
     cursor.execute("""
         SELECT TOP 1 1 FROM learning_progress 
         WHERE user_id = ? AND test_id = ? AND progress_type_id = 2
@@ -301,7 +408,6 @@ def test_detail(test_id):
 
     is_completed = cursor.fetchone() is not None
 
-    # ВСЕГДА получаем вопросы теста (тест можно проходить неограниченно)
     cursor.execute("""
         SELECT q.question_id, q.question_text, q.question_type_id, q.points
         FROM test_questions q
@@ -311,7 +417,6 @@ def test_detail(test_id):
 
     questions = cursor.fetchall()
 
-    # Для каждого вопроса получаем варианты ответов
     questions_with_options = []
     for question in questions:
         cursor.execute("""
@@ -338,7 +443,6 @@ def test_detail(test_id):
                            is_completed=is_completed,
                            username=session['username'])
 
-
 @app.route('/submit_test/<int:test_id>', methods=['POST'])
 def submit_test(test_id):
     if not is_authenticated():
@@ -350,7 +454,6 @@ def submit_test(test_id):
     cursor = conn.cursor()
 
     try:
-        # Получаем вопросы теста
         cursor.execute("""
             SELECT question_id, points 
             FROM test_questions 
@@ -363,7 +466,6 @@ def submit_test(test_id):
         correct_answers = 0
         total_questions = len(questions)
 
-        # Создаем запись о результате теста
         cursor.execute("""
             INSERT INTO test_results (user_id, test_id, score, max_score, time_spent_seconds)
             OUTPUT INSERTED.result_id
@@ -372,14 +474,12 @@ def submit_test(test_id):
 
         result_id = cursor.fetchone()[0]
 
-        # Проверяем каждый ответ
         for question in questions:
             question_id = question[0]
             question_points = question[1]
             user_answer = user_answers.get(str(question_id))
 
             if user_answer:
-                # Для single choice
                 if isinstance(user_answer, int):
                     cursor.execute("""
                         SELECT is_correct FROM question_options 
@@ -393,25 +493,20 @@ def submit_test(test_id):
                         total_score += question_points
                         correct_answers += 1
 
-                    # Сохраняем ответ пользователя
                     cursor.execute("""
                         INSERT INTO user_answers (result_id, question_id, selected_option_id, is_correct)
                         VALUES (?, ?, ?, ?)
                     """, result_id, question_id, user_answer, is_correct)
 
-                # Для multiple choice (если нужно в будущем)
                 elif isinstance(user_answer, list):
-                    # Логика для multiple choice
                     pass
 
-        # Обновляем общий результат
         cursor.execute("""
             UPDATE test_results 
             SET score = ? 
             WHERE result_id = ?
         """, total_score, result_id)
 
-        # Добавляем прогресс обучения
         cursor.execute("""
             INSERT INTO learning_progress (user_id, test_id, progress_type_id, score)
             VALUES (?, ?, 2, ?)
@@ -419,7 +514,6 @@ def submit_test(test_id):
 
         conn.commit()
 
-        # Проверяем достижения после прохождения теста
         check_and_award_achievements(session['user_id'])
 
         conn.close()
@@ -437,26 +531,22 @@ def submit_test(test_id):
         conn.close()
         return {'success': False, 'error': str(e)}
 
-
 @app.route('/profile')
 def profile():
     if not is_authenticated():
         return redirect(url_for('auth.login'))
 
-    # Сначала проверяем и присваиваем достижения
     check_and_award_achievements(session['user_id'])
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Получаем данные пользователя
     cursor.execute("""
         SELECT username, email, created_at 
         FROM users WHERE user_id = ?
     """, session['user_id'])
     user_data = cursor.fetchone()
 
-    # Статистика пользователя
     cursor.execute("""
         SELECT COUNT(DISTINCT article_id) FROM learning_progress 
         WHERE user_id = ? AND progress_type_id = 1
@@ -475,14 +565,12 @@ def profile():
     """, session['user_id'])
     achievements_count = cursor.fetchone()[0]
 
-    # Общее количество статей и тестов в системе
     cursor.execute("SELECT COUNT(*) FROM articles WHERE is_published = 1")
     total_articles = cursor.fetchone()[0]
 
     cursor.execute("SELECT COUNT(*) FROM tests WHERE is_active = 1")
     total_tests = cursor.fetchone()[0]
 
-    # Прогресс по темам
     cursor.execute("""
         SELECT c.name, 
                COUNT(DISTINCT lp.article_id) as completed,
@@ -496,7 +584,6 @@ def profile():
     """, session['user_id'])
     topic_progress = cursor.fetchall()
 
-    # Последние достижения - ВСЕ достижения для отладки
     cursor.execute("""
         SELECT a.name, a.description, a.icon, ua.earned_at
         FROM user_achievements ua
@@ -506,7 +593,6 @@ def profile():
     """, session['user_id'])
     recent_achievements = cursor.fetchall()
 
-    # Последние результаты тестов
     cursor.execute("""
         SELECT t.title, tr.score, tr.max_score, tr.completed_at
         FROM test_results tr
@@ -519,6 +605,10 @@ def profile():
         ORDER BY tr.completed_at DESC
     """, session['user_id'], session['user_id'])
     test_results = cursor.fetchall()
+
+    # Проверяем наличие аватарки (ДО закрытия соединения)
+    cursor.execute("SELECT avatar_id FROM user_avatars WHERE user_id = ?", session['user_id'])
+    has_avatar = cursor.fetchone() is not None
 
     conn.close()
 
@@ -533,8 +623,8 @@ def profile():
                            total_tests=total_tests,
                            topic_progress=topic_progress,
                            recent_achievements=recent_achievements,
-                           test_results=test_results)
-
+                           test_results=test_results,
+                           has_avatar=has_avatar)
 
 @app.route('/mark_article_read/<int:article_id>')
 def mark_article_read(article_id):
@@ -545,21 +635,17 @@ def mark_article_read(article_id):
     cursor = conn.cursor()
 
     try:
-        # Проверяем, не отмечена ли уже статья
         cursor.execute("""
             SELECT * FROM learning_progress 
             WHERE user_id = ? AND article_id = ? AND progress_type_id = 1
         """, session['user_id'], article_id)
 
         if not cursor.fetchone():
-            # Добавляем запись о прочтении
             cursor.execute("""
                 INSERT INTO learning_progress (user_id, article_id, progress_type_id)
                 VALUES (?, ?, 1)
             """, session['user_id'], article_id)
             conn.commit()
-
-            # Проверяем достижения после прочтения статьи
             check_and_award_achievements(session['user_id'])
 
         conn.close()
@@ -569,12 +655,122 @@ def mark_article_read(article_id):
         conn.close()
         return {'success': False, 'error': str(e)}
 
+@app.route('/coding_test/<int:test_id>')
+def coding_test(test_id):
+    if not is_authenticated():
+        return redirect(url_for('auth.login'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT test_id, title, description, max_score 
+        FROM tests WHERE test_id = ? AND is_active = 1
+    """, test_id)
+    test = cursor.fetchone()
+
+    if not test:
+        return "Тест не найден", 404
+
+    cursor.execute("""
+        SELECT challenge_id, step_number, description, points
+        FROM coding_challenges 
+        WHERE test_id = ?
+        ORDER BY step_number
+    """, test_id)
+    challenges = cursor.fetchall()
+
+    conn.close()
+
+    if 'coding_progress' not in session or session['coding_progress'].get('test_id') != test_id:
+        session['coding_progress'] = {
+            'test_id': test_id,
+            'current_step': 1,
+            'completed': [False] * len(challenges),
+            'score': 0,
+            'answers': {}
+        }
+
+    progress = session['coding_progress']
+    current_challenge = challenges[progress['current_step'] - 1]
+
+    return render_template('coding_test.html',
+                           test=test,
+                           challenges=challenges,
+                           current_challenge=current_challenge,
+                           progress=progress,
+                           username=session['username'])
+
+@app.route('/check_code/<int:challenge_id>', methods=['POST'])
+def check_code_route(challenge_id):
+    if not is_authenticated():
+        return {'success': False, 'error': 'Not authenticated'}
+
+    data = request.get_json()
+    user_code = data.get('code', '')
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT expected_code, points, test_id, step_number
+        FROM coding_challenges WHERE challenge_id = ?
+    """, challenge_id)
+    challenge = cursor.fetchone()
+    conn.close()
+
+    if not challenge:
+        return {'success': False, 'error': 'Задание не найдено'}
+
+    expected_code, points, test_id, step_number = challenge
+
+    is_correct = check_code(user_code, expected_code)
+
+    if 'coding_progress' in session and session['coding_progress']['test_id'] == test_id:
+        progress = session['coding_progress']
+        step_index = step_number - 1
+
+        if is_correct and not progress['completed'][step_index]:
+            progress['completed'][step_index] = True
+            progress['score'] += points
+            progress['answers'][str(challenge_id)] = user_code
+
+            if all(progress['completed']):
+                save_coding_test_result(test_id, progress['score'])
+
+        session['coding_progress'] = progress
+
+    return {
+        'success': True,
+        'is_correct': is_correct,
+        'expected': expected_code if not is_correct else None,
+        'completed': all(progress['completed']) if 'progress' in locals() else False
+    }
+
+@app.route('/coding_step/<int:test_id>/<int:step>')
+def coding_step(test_id, step):
+    if not is_authenticated():
+        return redirect(url_for('auth.login'))
+
+    if 'coding_progress' in session and session['coding_progress'].get('test_id') == test_id:
+        progress = session['coding_progress']
+        if step > 1 and not progress['completed'][step - 2]:
+            return redirect(url_for('coding_test', test_id=test_id))
+
+        if 1 <= step <= len(progress['completed']):
+            progress['current_step'] = step
+            session['coding_progress'] = progress
+
+    return redirect(url_for('coding_test', test_id=test_id))
 
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect(url_for('auth.login'))
 
+@app.route('/privacy')
+def privacy():
+    return render_template('privacy.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

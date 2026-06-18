@@ -2,7 +2,7 @@
 
 {% block content %}
 <div class="hero">
-    <h1>CodeFirst</h1>
+    <h1>ПервыйКод</h1>
     <p class="hero-subtitle">Начни программировать на Python с нуля</p>
 </div>
 
@@ -40,4 +40,47 @@
         </div>
     </div>
 </div>
+
+<!-- Подвал с информацией о cookies -->
+<footer class="footer">
+    <div class="footer-content">
+        <p class="footer-text">Сайт использует файлы cookie для улучшения работы. Продолжая использовать сайт, вы соглашаетесь с использованием cookie-файлов.</p>
+        <p class="footer-links">
+            <a href="{{ url_for('privacy') }}">Политика конфиденциальности</a>
+        </p>
+    </div>
+</footer>
+
+<style>
+    /* Стили для подвала */
+    .footer {
+        margin-top: 3rem;
+        padding: 1rem;
+        border-top: 1px solid rgba(78, 205, 196, 0.2);
+    }
+
+    .footer-content {
+        max-width: 1200px;
+        margin: 0 auto;
+        text-align: center;
+    }
+
+    .footer-text {
+        color: rgba(248, 250, 249, 0.7);
+        font-size: 0.7rem;
+        margin: 0;
+        line-height: 1.4;
+    }
+
+    @media (max-width: 768px) {
+        .footer {
+            margin-top: 2rem;
+            padding: 0.8rem;
+        }
+
+        .footer-text {
+            font-size: 0.6rem;
+        }
+    }
+</style>
 {% endblock %}

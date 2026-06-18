@@ -5,57 +5,59 @@
 
 {% block content %}
 <div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
         <h2>Все тесты</h2>
         <a href="{{ url_for('admin.new_test') }}" class="btn btn-primary">Добавить тест</a>
     </div>
 
-    <table class="table">
-        <thead>
-            <tr>
-                <th>ID</th>
-                <th>Название теста</th>
-                <th>Категория</th>
-                <th>Сложность</th>
-                <th>Статус</th>
-                <th>Баллы</th>
-                <th>Дата создания</th>
-                <th>Действия</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for test in tests %}
-            <tr>
-                <td>{{ test[0] }}</td> <!-- test_id -->
-                <td><strong>{{ test[1] }}</strong></td> <!-- title -->
-                <td>{{ test[3] }}</td> <!-- category -->
-                <td>{{ test[4] }}</td> <!-- difficulty -->
-                <td>
-                    {% if test[6] %} <!-- is_active (было 7, стало 6) -->
-                        <span style="color: #27ae60;">Активен</span>
-                    {% else %}
-                        <span style="color: #e74c3c;">Неактивен</span>
-                    {% endif %}
-                </td>
-                <td>{{ test[5] }}</td> <!-- max_score (было 6, стало 5) -->
-                <td>{{ test[7].strftime('%d.%m.%Y') }}</td> <!-- created_at (было 8, стало 7) -->
-                <td>
-                    <div style="display: flex; gap: 0.5rem;">
-                        <a href="{{ url_for('admin.edit_test', test_id=test[0]) }}" class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
-                            Редактировать
-                        </a>
-                        <a href="{{ url_for('test_detail', test_id=test[0]) }}" class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;">
-                            Просмотреть
-                        </a>
-                        <a href="{{ url_for('admin.delete_test', test_id=test[0]) }}" class="btn btn-danger" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;"
-                           onclick="return confirm('Вы уверены что хотите удалить этот тест?')">
-                            Удалить
-                        </a>
-                    </div>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Название теста</th>
+                    <th>Категория</th>
+                    <th>Сложность</th>
+                    <th>Статус</th>
+                    <th>Баллы</th>
+                    <th>Дата создания</th>
+                    <th>Действия</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for test in tests %}
+                <tr>
+                    <td>{{ test[0] }}</td>
+                    <td><strong>{{ test[1] }}</strong></td>
+                    <td>{{ test[3] }}</td>
+                    <td>{{ test[4] }}</td>
+                    <td>
+                        {% if test[6] %}
+                            <span class="status-badge status-active">Активен</span>
+                        {% else %}
+                            <span class="status-badge status-inactive">Неактивен</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ test[5] }}</td>
+                    <td>{{ test[7].strftime('%d.%m.%Y') }}</td>
+                    <td>
+                        <div class="action-buttons">
+                            <a href="{{ url_for('admin.edit_test', test_id=test[0]) }}" class="btn btn-secondary">
+                                Редактировать
+                            </a>
+                            <a href="{{ url_for('test_detail', test_id=test[0]) }}" class="btn btn-primary">
+                                Просмотреть
+                            </a>
+                            <a href="{{ url_for('admin.delete_test', test_id=test[0]) }}" class="btn btn-danger"
+                               onclick="return confirm('Вы уверены что хотите удалить этот тест?')">
+                                Удалить
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 {% endblock %}

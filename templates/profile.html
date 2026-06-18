@@ -12,12 +12,34 @@
         <!-- Левая колонка - Информация пользователя -->
         <div class="profile-sidebar">
             <div class="user-card">
-                <div class="user-avatar">
-                    {{ username[0]|upper }}
+                <div class="avatar-container" onclick="document.getElementById('avatar-input').click();">
+                    <div class="user-avatar" id="avatar-display">
+                        {% if has_avatar %}
+                        <img src="{{ url_for('get_avatar', user_id=session['user_id']) }}" class="avatar-image">
+                        {% else %}
+                        {{ username[0]|upper }}
+                        {% endif %}
+                    </div>
+                    <div class="avatar-overlay">
+                        <span>Изменить</span>
+                    </div>
                 </div>
+
+                <form id="avatar-form" style="display: none;">
+                    <input type="file" id="avatar-input" accept="image/png, image/jpeg, image/jpg, image/gif">
+                </form>
+
                 <h2>{{ username }}</h2>
                 <p class="user-email">{{ email }}</p>
                 <p class="user-join-date">Участник с {{ join_date.strftime('%d.%m.%Y') }}</p>
+
+                <div class="avatar-actions" id="avatar-actions" style="display: none;">
+                    <button onclick="uploadAvatar()" class="btn btn-primary btn-sm">Сохранить</button>
+                    <button onclick="cancelAvatar()" class="btn btn-secondary btn-sm">Отмена</button>
+                    {% if has_avatar %}
+                    <button onclick="deleteAvatar()" class="btn btn-danger btn-sm">Удалить</button>
+                    {% endif %}
+                </div>
 
                 <div class="logout-section">
                     <a href="{{ url_for('logout') }}" class="btn btn-danger btn-full">
@@ -86,7 +108,7 @@
                 <div class="achievements-grid">
                     {% for achievement in recent_achievements %}
                     <div class="achievement earned">
-                        <div class="achievement-icon">{{ achievement[2] if achievement[2] else '🏆' }}</div>
+                        <div class="achievement-icon">{{ achievement[2] if achievement[2] else '' }}</div>
                         <div class="achievement-info">
                             <div class="achievement-title">{{ achievement[0] }}</div>
                             <div class="achievement-desc">{{ achievement[1] }}</div>
@@ -108,4 +130,150 @@
         </div>
     </div>
 </div>
+
+<style>
+.avatar-container {
+    position: relative;
+    width: 120px;
+    height: 120px;
+    margin: 0 auto 1rem;
+    cursor: pointer;
+    border-radius: 50%;
+    overflow: hidden;
+}
+
+.user-avatar {
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(135deg, #4ecdc4, #2ecc71);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    color: white;
+    font-weight: bold;
+    margin: 0 auto;
+    border: 3px solid #4ecdc4;
+    transition: all 0.3s ease;
+}
+
+.avatar-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.avatar-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.9rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    border-radius: 50%;
+}
+
+.avatar-container:hover .avatar-overlay {
+    opacity: 1;
+}
+
+.avatar-container:hover .user-avatar {
+    transform: scale(1.05);
+}
+
+.avatar-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+}
+
+.btn-sm {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.85rem;
+}
+</style>
+
+<script>
+let selectedFile = null;
+
+document.getElementById('avatar-input').addEventListener('change', function(e) {
+    if (this.files && this.files[0]) {
+        selectedFile = this.files[0];
+
+        // Показываем превью
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const avatarDisplay = document.getElementById('avatar-display');
+            avatarDisplay.innerHTML = `<img src="${e.target.result}" class="avatar-image">`;
+        }
+        reader.readAsDataURL(this.files[0]);
+
+        // Показываем кнопки действий
+        document.getElementById('avatar-actions').style.display = 'flex';
+    }
+});
+
+function uploadAvatar() {
+    if (!selectedFile) return;
+
+    const formData = new FormData();
+    formData.append('avatar', selectedFile);
+
+    fetch('/upload_avatar', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('Аватар успешно обновлен');
+            document.getElementById('avatar-actions').style.display = 'none';
+            location.reload();
+        } else {
+            alert('Ошибка: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Ошибка сети');
+    });
+}
+
+function cancelAvatar() {
+    selectedFile = null;
+    document.getElementById('avatar-input').value = '';
+    document.getElementById('avatar-actions').style.display = 'none';
+    location.reload();
+}
+
+function deleteAvatar() {
+    if (confirm('Удалить аватар?')) {
+        fetch('/delete_avatar', {
+            method: 'POST'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Аватар удален');
+                location.reload();
+            } else {
+                alert('Ошибка: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Ошибка сети');
+        });
+    }
+}
+</script>
 {% endblock %}
